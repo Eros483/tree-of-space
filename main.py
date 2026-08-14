@@ -100,6 +100,7 @@ class TreeOfSpace:
     def upgrade_lock(self, x, uid):
         node_id = self.node_to_id[x]
         path = self._path(node_id)
+        visited = []
         self._acquire(path)
         try:
             if self.is_locked[node_id] or self.locked_descendants[node_id] == 0:
@@ -136,6 +137,26 @@ class TreeOfSpace:
         finally:
             self._release(visited)
             self._release(path)
+
+
+def _failed_upgrade_test():
+    names = ["Root", "A", "B", "C", "D", "E", "F"]
+
+    t = TreeOfSpace(names, 2)
+    assert not t.upgrade_lock("C", 1)
+
+    t = TreeOfSpace(names, 2)
+    assert t.lock("A", 1)
+    assert not t.upgrade_lock("A", 2)
+
+    t = TreeOfSpace(names, 2)
+    assert t.lock("A", 1)
+    assert not t.upgrade_lock("B", 1)
+
+    t = TreeOfSpace(names, 2)
+    assert t.lock("C", 1) and t.lock("D", 2)
+    assert not t.upgrade_lock("A", 1)
+    print("failed-upgrade regression passed")
 
 
 def run(raw):
@@ -263,6 +284,7 @@ B
         for raw, expected in cases:
             assert run(raw) == expected, f"FAILED:\n{raw!r}\nexpected {expected!r}\ngot {run(raw)!r}"
         _smoke_test()
+        _failed_upgrade_test()
         print("all tests passed")
     else:
         solve()
